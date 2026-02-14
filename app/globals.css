@@ -1,0 +1,18 @@
+:root {
+  --bg: #0b0f14;
+  --card: #11161d;
+  --text: #e7eef8;
+  --muted: #9fb3c8;
+  --accent: #7c4dff;
+  --success: #2ecc71;
+}
+
+html, body { height: 100%; }
+body { background: var(--bg); color: var(--text); margin: 0; }
+input, textarea, select { background: var(--card); color: var(--text); border: 1px solid #2a3441; padding: 10px; border-radius: 8px; }
+button { background: var(--accent); color: white; border: none; padding: 10px 14px; border-radius: 8px; cursor: pointer; }
+.container { max-width: 960px; margin: 0 auto; padding: 24px; }
+.card { background: var(--card); border: 1px solid #1c2430; border-radius: 12px; padding: 16px; }
+.grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.section { margin-top: 16px; }
+.trace { font-size: 0.9rem; color: var(--muted); }
