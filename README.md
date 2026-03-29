@@ -15,13 +15,23 @@ Agentic startup copilot for women entrepreneurs. Generates a structured plan (Bl
    npm install
    ```
 2. Configure env:
-   - Create a `.env.local` and set your MiniMax API key (and optional group/model):
+   - Create a `.env.local` and choose your provider:
      ```bash
+     # Provider: minimax (default) or claude
+     LLM_PROVIDER=minimax
+
+     # MiniMax
      MINIMAX_API_KEY=your_key_here
      # Optional
      # MINIMAX_GROUP_ID=your_group
      # MINIMAX_BASE_URL=https://api.minimax.io/v1
      # MINIMAX_MODEL=MiniMax-M2.5
+
+     # Claude (Anthropic)
+     # LLM_PROVIDER=claude
+     # ANTHROPIC_API_KEY=your_key_here
+     # ANTHROPIC_MODEL=claude-3-5-sonnet-latest
+     # ANTHROPIC_BASE_URL=https://api.anthropic.com/v1
      ```
 3. Run the dev server:
    ```bash
@@ -37,6 +47,8 @@ Agentic startup copilot for women entrepreneurs. Generates a structured plan (Bl
 ## API
 - Health: `GET /api/health`
 - Run Agents: `POST /api/runAgents`
+- Runs list: `GET /api/runs`
+- Run detail: `GET /api/runs/:id`
   - Body (example):
     ```json
     {
@@ -66,7 +78,8 @@ Agentic startup copilot for women entrepreneurs. Generates a structured plan (Bl
 ## Notes
 - JSON integrity: `lib/minimax.ts` sets `max_tokens`, `response_format: json_object`, and extracts JSON reliably.
 - Performance: `app/api/runAgents/route.ts` runs agents in parallel via `Promise.all`.
-- If API status shows error, verify `MINIMAX_API_KEY` and restart dev.
+- If API status shows error, verify your provider key (`MINIMAX_API_KEY` or `ANTHROPIC_API_KEY`) and restart dev.
+- Run history is persisted locally in `.data/runs.json` (latest 100 runs).
 
 ## License
 Proprietary – do not distribute.

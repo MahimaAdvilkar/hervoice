@@ -1,0 +1,218 @@
+[
+  {
+    "id": "run_1774808734347_4aer0r",
+    "created_at": "2026-03-29T18:25:34.347Z",
+    "provider": "minimax",
+    "mode": "fallback",
+    "intake": {
+      "founderName": "Mahima",
+      "idea": "AI assistant for founders with playbooks",
+      "targetCustomer": "women founders",
+      "stage": "ideation",
+      "region": "India",
+      "industry": "SaaS",
+      "goals": "validate MVP",
+      "constraints": "small budget",
+      "challenge": "finding first users"
+    },
+    "final": {
+      "blueprint": {
+        "problem_statement": "Early-stage founders need clear positioning and core feature focus to validate demand quickly.",
+        "target_customer": "Early DTC brands and performance marketers",
+        "value_proposition": "Concise, actionable plan for validation and first customers",
+        "unique_angle": "Women-entrepreneurship aware guidance with pragmatic steps",
+        "core_features": [
+          "Clear problem + value articulation",
+          "Customer discovery questions",
+          "Validation experiment outline"
+        ],
+        "risks": [],
+        "assumptions": []
+      },
+      "funding": {
+        "recommended_funding_path": "Bootstrap + grants + women-focused accelerators",
+        "top_3_next_steps": [
+          "Identify 5 design partners",
+          "Run 2 validation experiments",
+          "Apply to 2 relevant accelerators"
+        ],
+        "grants_and_programs": [],
+        "accelerator_types": [],
+        "bootstrap_strategy": "Leverage no-code, community outreach, and pilots",
+        "pitch_focus": [],
+        "risks_and_mitigations": []
+      },
+      "gtm": {
+        "positioning_statement": "AI-powered solution to validate and acquire first customers efficiently",
+        "ideal_early_adopters": [
+          "DTC brands",
+          "Performance marketing agencies"
+        ],
+        "validation_experiments": [
+          "Landing page + waitlist",
+          "Cold outreach with mockups"
+        ],
+        "first_10_customers_plan": [
+          "Offer pilot to 5 partners",
+          "Referral loop to 5 more"
+        ],
+        "channels": [
+          "Twitter/X",
+          "LinkedIn",
+          "Founder communities"
+        ],
+        "partnership_ideas": [
+          "Agencies",
+          "Founder groups"
+        ],
+        "success_metrics": [
+          "5 design partners",
+          "10 pilots",
+          "1 paid logo"
+        ]
+      },
+      "roadmap": {
+        "day_30": [
+          "Customer discovery calls",
+          "Waitlist + landing page",
+          "Pilot outreach",
+          "MVP scope + build"
+        ],
+        "day_60": [
+          "Customer discovery calls",
+          "Waitlist + landing page",
+          "Pilot outreach",
+          "MVP scope + build",
+          "Feedback loops"
+        ],
+        "day_90": [
+          "Customer discovery calls",
+          "Waitlist + landing page",
+          "Pilot outreach",
+          "MVP scope + build",
+          "Feedback loops"
+        ],
+        "milestones": [
+          "Customer discovery calls",
+          "Waitlist + landing page",
+          "Pilot outreach",
+          "MVP scope + build",
+          "Feedback loops"
+        ],
+        "metrics_to_track": [
+          "Customer discovery calls",
+          "Waitlist + landing page",
+          "Pilot outreach",
+          "MVP scope + build",
+          "Feedback loops"
+        ]
+      },
+      "pitch_deck": {
+        "one_sentence_vision": "Agentic startup copilot to validate and win first customers.",
+        "elevator_pitch": "We help women founders validate demand and get to first revenue with pragmatic, data-backed plans.",
+        "slides": [
+          {
+            "title": "Problem",
+            "bullets": [
+              "Validation is slow",
+              "Creative costs high",
+              "Uncertain GTM"
+            ]
+          },
+          {
+            "title": "Solution",
+            "bullets": [
+              "Agentic copilot",
+              "Actionable plans",
+              "Fast iterations"
+            ]
+          },
+          {
+            "title": "Why Now",
+            "bullets": [
+              "GenAI maturity",
+              "Founder tools growth",
+              "Community reach"
+            ]
+          },
+          {
+            "title": "Market",
+            "bullets": [
+              "DTC + SMB",
+              "Martech",
+              "Founder tools"
+            ]
+          },
+          {
+            "title": "Product",
+            "bullets": [
+              "Planning agents",
+              "Schema outputs",
+              "Roadmaps"
+            ]
+          },
+          {
+            "title": "Go-To-Market",
+            "bullets": [
+              "Communities",
+              "Agencies",
+              "Pilots"
+            ]
+          },
+          {
+            "title": "Business Model",
+            "bullets": [
+              "SaaS tiers",
+              "Pilot bundles",
+              "Advisory"
+            ]
+          },
+          {
+            "title": "Ask / Next Steps",
+            "bullets": [
+              "5 partners",
+              "10 pilots",
+              "1 paid logo"
+            ]
+          }
+        ],
+        "demo_script_30s": [
+          "Fill intake, run agents, get JSON plans",
+          "Share with partners, iterate, convert"
+        ]
+      },
+      "agent_trace": [
+        {
+          "agent": "vision",
+          "status": "completed",
+          "message": "Fallback after minimax API failure: fetch failed",
+          "timestamp": "2026-03-29T18:25:34.346Z"
+        },
+        {
+          "agent": "funding",
+          "status": "completed",
+          "message": "Fallback after minimax API failure: fetch failed",
+          "timestamp": "2026-03-29T18:25:34.346Z"
+        },
+        {
+          "agent": "gtm",
+          "status": "completed",
+          "message": "Fallback after minimax API failure: fetch failed",
+          "timestamp": "2026-03-29T18:25:34.346Z"
+        },
+        {
+          "agent": "roadmap",
+          "status": "completed",
+          "message": "Fallback after minimax API failure: fetch failed",
+          "timestamp": "2026-03-29T18:25:34.346Z"
+        },
+        {
+          "agent": "pitch",
+          "status": "completed",
+          "message": "Fallback after minimax API failure: fetch failed",
+          "timestamp": "2026-03-29T18:25:34.346Z"
+        }
+      ]
+    }
+  }
+]

@@ -85,3 +85,13 @@ export const FinalResponseSchema = z.object({
   agent_trace: z.array(AgentTraceItemSchema)
 });
 export type FinalResponse = z.infer<typeof FinalResponseSchema>;
+
+export const RunRecordSchema = z.object({
+  id: z.string(),
+  created_at: z.string(),
+  provider: z.string(),
+  mode: z.enum(["live", "mock", "fallback"]),
+  intake: IntakeSchema,
+  final: FinalResponseSchema,
+});
+export type RunRecord = z.infer<typeof RunRecordSchema>;

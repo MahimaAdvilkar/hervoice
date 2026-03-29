@@ -3,6 +3,16 @@ import React from "react";
 import { IntakeSchema, FinalResponseSchema, type FinalResponse, type Intake } from "@/lib/schemas";
 import "./globals.css";
 
+type RunSummary = {
+  id: string;
+  created_at: string;
+  provider: string;
+  mode: "live" | "mock" | "fallback";
+  founderName: string;
+  idea: string;
+  stage: string;
+};
+
 export default function Page() {
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
@@ -10,6 +20,22 @@ export default function Page() {
   const [apiHealth, setApiHealth] = React.useState<{ status: "ok" | "error"; error?: string } | null>(null);
   const downloadRef = React.useRef<HTMLAnchorElement | null>(null);
   const [lastIntake, setLastIntake] = React.useState<Intake | null>(null);
+  const [runs, setRuns] = React.useState<RunSummary[]>([]);
+  const [historyLoading, setHistoryLoading] = React.useState(false);
+  const [lastRunId, setLastRunId] = React.useState<string | null>(null);
+
+  const loadRuns = React.useCallback(async () => {
+    setHistoryLoading(true);
+    try {
+      const res = await fetch("/api/runs");
+      const json = await res.json();
+      setRuns(Array.isArray(json?.items) ? json.items : []);
+    } catch {
+      // Non-fatal; keep app usable even if history fails
+    } finally {
+      setHistoryLoading(false);
+    }
+  }, []);
 
   React.useEffect(() => {
     (async () => {
@@ -21,7 +47,8 @@ export default function Page() {
         setApiHealth({ status: "error", error: e?.message ?? "Health check failed" });
       }
     })();
-  }, []);
+    loadRuns();
+  }, [loadRuns]);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -56,12 +83,22 @@ export default function Page() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(parsed.data),
       });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error || "Request failed");
-      const validated = FinalResponseSchema.parse(json);
-      setData(validated);
+
+      // Prefer JSON, but fall back to text to surface server-side HTML errors nicely
+      const contentType = res.headers.get("content-type") || "";
+      if (contentType.includes("application/json")) {
+        const json = await res.json();
+        if (!res.ok) throw new Error(json?.error || "Request failed");
+        const validated = FinalResponseSchema.parse(json);
+        setData(validated);
+        setLastRunId(typeof json?.run_id === "string" ? json.run_id : null);
+        await loadRuns();
+      } else {
+        const text = await res.text();
+        throw new Error(text || "Server returned non-JSON response");
+      }
     } catch (err: any) {
-      setError(err.message ?? "Something went wrong");
+      setError(err?.message ?? "Something went wrong");
     } finally {
       setLoading(false);
     }
@@ -199,45 +236,39 @@ export default function Page() {
     }, 0);
   };
 
-  const downloadPPTX = async () => {
-    if (!data) return;
-    const stageLabel = (lastIntake?.stage ?? "Ideation").toString();
-    const filename = `SheLaunch-Pitch-${stageLabel}.pptx`;
-    const PptxGenJS = (await import("pptxgenjs")).default;
-    const pptx = new PptxGenJS();
-
-    // Theme defaults
-    const titleOpts = { x: 0.5, y: 0.5, w: 9, fontSize: 28, bold: true } as const;
-    const textOpts = { x: 0.5, y: 1.2, w: 9, fontSize: 18 } as const;
-    const bulletsOpts = { x: 0.7, y: 1.8, w: 8.6, fontSize: 18, bullet: true } as const;
-
-    // Cover slide
-    {
-      const slide = pptx.addSlide();
-      slide.addText("SheLaunch — Pitch Deck", titleOpts);
-      slide.addText(`Stage: ${stageLabel}`, { ...textOpts, y: 1.2 });
-      slide.addText(`Vision: ${data.pitch_deck.one_sentence_vision}`, { ...textOpts, y: 2.0 });
-      slide.addText("Elevator Pitch:", { ...textOpts, y: 2.8, bold: true });
-      slide.addText(data.pitch_deck.elevator_pitch, { x: 0.5, y: 3.3, w: 9, fontSize: 16 });
+  const downloadPpt = async () => {
+    try {
+      const res = await fetch("/api/ppt", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title: "SheLaunch AI Deck", final: data, intake: lastIntake })
+      });
+      if (!res.ok) throw new Error("Failed to generate PPT");
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "deck.pptx";
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (e: any) {
+      alert(e?.message ?? "Failed to download PPT");
     }
+  };
 
-    // Slides 1–8 from JSON
-    data.pitch_deck.slides.forEach((s, idx) => {
-      const slide = pptx.addSlide();
-      slide.addText(`${idx + 1}. ${s.title}`, titleOpts);
-      slide.addText("", textOpts); // spacer
-      slide.addText(s.bullets.map(b => `• ${b}`).join("\n"), bulletsOpts);
-    });
-
-    // Optional demo script
-    if (data.pitch_deck.demo_script_30s.length) {
-      const slide = pptx.addSlide();
-      slide.addText("30s Demo Script", titleOpts);
-      slide.addText(data.pitch_deck.demo_script_30s.map(b => `• ${b}`).join("\n"), bulletsOpts);
+  const loadRun = async (id: string) => {
+    try {
+      const res = await fetch(`/api/runs/${id}`);
+      const json = await res.json();
+      if (!res.ok) throw new Error(json?.error || "Failed to load run");
+      const validated = FinalResponseSchema.parse(json.final);
+      setData(validated);
+      setLastIntake(json.intake as Intake);
+      setLastRunId(json.id as string);
+      setError(null);
+    } catch (e: any) {
+      setError(e?.message ?? "Failed to load run");
     }
-
-    // Save file
-    await pptx.writeFile({ fileName: filename });
   };
 
   return (
@@ -299,14 +330,44 @@ export default function Page() {
         </div>
       </form>
 
+      {/* Global actions bar — always visible */}
+      <div className="card" style={{ marginTop: 12, display: 'flex', gap: 8, alignItems: 'center' }}>
+        <strong>Actions:</strong>
+        <button onClick={copyJson} disabled={!data}>Copy JSON</button>
+        <button onClick={downloadMarkdown} disabled={!data}>Download Markdown</button>
+        <button onClick={downloadPpt} disabled={loading}>Download PPTX</button>
+        {lastRunId && <span className="trace">Run ID: {lastRunId}</span>}
+      </div>
+
+      <div className="card" style={{ marginTop: 12 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <h3 style={{ margin: 0 }}>Run History</h3>
+          <button onClick={loadRuns} disabled={historyLoading}>{historyLoading ? "Refreshing..." : "Refresh"}</button>
+        </div>
+        {runs.length === 0 ? (
+          <p className="trace" style={{ marginTop: 8 }}>No runs yet. Generate your first plan.</p>
+        ) : (
+          <div style={{ marginTop: 8, display: "grid", gap: 8 }}>
+            {runs.slice(0, 8).map((run) => (
+              <button
+                key={run.id}
+                onClick={() => loadRun(run.id)}
+                style={{ textAlign: "left", padding: 10, borderRadius: 10, border: "1px solid #2a2d33", background: "#111" }}
+              >
+                <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
+                  <strong>{run.founderName} • {run.stage}</strong>
+                  <span className="trace">{new Date(run.created_at).toLocaleString()}</span>
+                </div>
+                <div className="trace">Provider: {run.provider} • Mode: {run.mode}</div>
+                <div className="trace">{run.idea.slice(0, 110)}{run.idea.length > 110 ? "..." : ""}</div>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
       {data && (
         <div className="section" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-          <div className="card" style={{ gridColumn: '1 / -1', display: 'flex', gap: 8, alignItems: 'center' }}>
-            <strong>Actions:</strong>
-            <button onClick={copyJson}>Copy JSON</button>
-            <button onClick={downloadMarkdown}>Download Markdown</button>
-            <button onClick={downloadPPTX}>Download PPTX</button>
-          </div>
           <div className="card">
             <h2>Founder Blueprint</h2>
             <p><strong>Problem:</strong> {data.blueprint.problem_statement}</p>

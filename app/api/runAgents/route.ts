@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+export const runtime = "nodejs";
 import { z } from "zod";
 import {
   IntakeSchema,
@@ -10,7 +11,8 @@ import {
   FinalResponseSchema,
   AgentTraceItemSchema,
 } from "@/lib/schemas";
-import { MiniMaxClient } from "@/lib/minimax";
+import { createLLMClient, resolveProvider, type LLMClient } from "@/lib/llm";
+import { saveRun } from "@/lib/runStore";
 import { visionPrompt, fundingPrompt, gtmPrompt, roadmapPrompt, pitchPrompt, fixJsonPrompt } from "@/lib/prompts";
 
 type AgentKey = "vision" | "funding" | "gtm" | "roadmap" | "pitch";
@@ -71,7 +73,7 @@ function schemaHintFor(agent: AgentKey) {
   }
 }
 
-async function runAgent<T>(client: MiniMaxClient, agent: AgentKey, prompt: { system: string; user: string }, schema: z.ZodType<T>) {
+async function runAgent<T>(client: LLMClient, agent: AgentKey, prompt: { system: string; user: string }, schema: z.ZodType<T>) {
   const steps: ReturnType<typeof trace>[] = [];
   steps.push(trace(agent, "started"));
 
@@ -192,6 +194,28 @@ function buildFallback(agent: AgentKey) {
 }
 
 export async function POST(req: Request) {
+  const buildMockFinal = () => {
+    const blueprint = BlueprintSchema.parse(buildFallback("vision"));
+    const funding = FundingSchema.parse(buildFallback("funding"));
+    const gtm = GTMSchema.parse(buildFallback("gtm"));
+    const roadmap = RoadmapSchema.parse(buildFallback("roadmap"));
+    const pitch = PitchDeckSchema.parse(buildFallback("pitch"));
+    return {
+      blueprint,
+      funding,
+      gtm,
+      roadmap,
+      pitch_deck: pitch,
+      agent_trace: [
+        trace("vision", "completed", "Mock mode"),
+        trace("funding", "completed", "Mock mode"),
+        trace("gtm", "completed", "Mock mode"),
+        trace("roadmap", "completed", "Mock mode"),
+        trace("pitch", "completed", "Mock mode"),
+      ],
+    };
+  };
+
   try {
     const url = new URL(req.url);
     const mockParam = url.searchParams.get("mock");
@@ -199,55 +223,52 @@ export async function POST(req: Request) {
     const body = await req.json();
     const intake = IntakeSchema.parse(body);
 
+    const provider = resolveProvider();
+    let mode: "live" | "mock" | "fallback" = "live";
+
     if (mockMode) {
-      const blueprint = BlueprintSchema.parse(buildFallback("vision"));
-      const funding = FundingSchema.parse(buildFallback("funding"));
-      const gtm = GTMSchema.parse(buildFallback("gtm"));
-      const roadmap = RoadmapSchema.parse(buildFallback("roadmap"));
-      const pitch = PitchDeckSchema.parse(buildFallback("pitch"));
-      const final = {
-        blueprint,
-        funding,
-        gtm,
-        roadmap,
-        pitch_deck: pitch,
-        agent_trace: [
-          trace("vision", "completed", "Mock mode"),
-          trace("funding", "completed", "Mock mode"),
-          trace("gtm", "completed", "Mock mode"),
-          trace("roadmap", "completed", "Mock mode"),
-          trace("pitch", "completed", "Mock mode"),
-        ],
-      };
+      mode = "mock";
+      const final = buildMockFinal();
       const validated = FinalResponseSchema.parse(final);
-      return NextResponse.json(validated);
+      const run = await saveRun({ provider, mode, intake, final: validated });
+      return NextResponse.json({ ...validated, run_id: run.id });
     }
 
-    const client = new MiniMaxClient();
+    let final: any;
+    try {
+      const client = createLLMClient();
+      const traceItems: ReturnType<typeof trace>[] = [];
 
-    const traceItems: ReturnType<typeof trace>[] = [];
+      // Run agents in parallel to reduce end-to-end latency
+      const [v, f, g, r, p] = await Promise.all([
+        runAgent(client, "vision", visionPrompt(intake), BlueprintSchema),
+        runAgent(client, "funding", fundingPrompt(intake), FundingSchema),
+        runAgent(client, "gtm", gtmPrompt(intake), GTMSchema),
+        runAgent(client, "roadmap", roadmapPrompt(intake), RoadmapSchema),
+        runAgent(client, "pitch", pitchPrompt(intake), PitchDeckSchema),
+      ]);
+      traceItems.push(...v.steps, ...f.steps, ...g.steps, ...r.steps, ...p.steps);
 
-    // Run agents in parallel to reduce end-to-end latency
-    const [v, f, g, r, p] = await Promise.all([
-      runAgent(client, "vision", visionPrompt(intake), BlueprintSchema),
-      runAgent(client, "funding", fundingPrompt(intake), FundingSchema),
-      runAgent(client, "gtm", gtmPrompt(intake), GTMSchema),
-      runAgent(client, "roadmap", roadmapPrompt(intake), RoadmapSchema),
-      runAgent(client, "pitch", pitchPrompt(intake), PitchDeckSchema),
-    ]);
-    traceItems.push(...v.steps, ...f.steps, ...g.steps, ...r.steps, ...p.steps);
-
-    const final = {
-      blueprint: v.data,
-      funding: f.data,
-      gtm: g.data,
-      roadmap: r.data,
-      pitch_deck: p.data,
-      agent_trace: traceItems,
-    };
+      final = {
+        blueprint: v.data,
+        funding: f.data,
+        gtm: g.data,
+        roadmap: r.data,
+        pitch_deck: p.data,
+        agent_trace: traceItems,
+      };
+    } catch (llmError: any) {
+      final = buildMockFinal();
+      mode = "fallback";
+      final.agent_trace = final.agent_trace.map((item: any) => ({
+        ...item,
+        message: `Fallback after ${provider} API failure: ${llmError?.message ?? "unknown"}`,
+      }));
+    }
 
     const validated = FinalResponseSchema.parse(final);
-    return NextResponse.json(validated);
+    const run = await saveRun({ provider, mode, intake, final: validated });
+    return NextResponse.json({ ...validated, run_id: run.id });
   } catch (error: any) {
     return NextResponse.json({ error: error.message ?? "Unknown error" }, { status: 400 });
   }
