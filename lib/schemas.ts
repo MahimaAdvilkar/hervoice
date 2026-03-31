@@ -93,5 +93,31 @@ export const RunRecordSchema = z.object({
   mode: z.enum(["live", "mock", "fallback"]),
   intake: IntakeSchema,
   final: FinalResponseSchema,
+  evaluation: z.object({
+    overall_score: z.number().min(0).max(100),
+    actionability_score: z.number().min(0).max(100),
+    consistency_score: z.number().min(0).max(100),
+    specificity_score: z.number().min(0).max(100),
+    risk_clarity_score: z.number().min(0).max(100),
+    strengths: z.array(z.string()).default([]),
+    weaknesses: z.array(z.string()).default([]),
+    next_improvements: z.array(z.string()).default([]),
+    evaluated_at: z.string(),
+    evaluator: z.string(),
+  }).optional(),
 });
 export type RunRecord = z.infer<typeof RunRecordSchema>;
+
+export const EvaluationResultSchema = z.object({
+  overall_score: z.number().min(0).max(100),
+  actionability_score: z.number().min(0).max(100),
+  consistency_score: z.number().min(0).max(100),
+  specificity_score: z.number().min(0).max(100),
+  risk_clarity_score: z.number().min(0).max(100),
+  strengths: z.array(z.string()).default([]),
+  weaknesses: z.array(z.string()).default([]),
+  next_improvements: z.array(z.string()).default([]),
+  evaluated_at: z.string(),
+  evaluator: z.string(),
+});
+export type EvaluationResult = z.infer<typeof EvaluationResultSchema>;

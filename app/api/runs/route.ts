@@ -14,6 +14,12 @@ export async function GET() {
       founderName: r.intake.founderName,
       idea: r.intake.idea,
       stage: r.intake.stage,
+      evaluation: r.evaluation
+        ? {
+            overall_score: r.evaluation.overall_score,
+            evaluated_at: r.evaluation.evaluated_at,
+          }
+        : null,
     }));
     return NextResponse.json({ items });
   } catch (error: any) {

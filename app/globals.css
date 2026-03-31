@@ -1,18 +1,218 @@
 :root {
   --bg: #0b0f14;
   --card: #11161d;
+  --card-hover: #151c26;
   --text: #e7eef8;
-  --muted: #9fb3c8;
+  --muted: #7a90a8;
   --accent: #7c4dff;
+  --accent-hover: #6a3de8;
   --success: #2ecc71;
+  --warning: #ffc107;
+  --danger: #ff6b6b;
+  --border: #1c2430;
+  --border-active: #2a3c50;
 }
 
 html, body { height: 100%; }
-body { background: var(--bg); color: var(--text); margin: 0; }
-input, textarea, select { background: var(--card); color: var(--text); border: 1px solid #2a3441; padding: 10px; border-radius: 8px; }
-button { background: var(--accent); color: white; border: none; padding: 10px 14px; border-radius: 8px; cursor: pointer; }
-.container { max-width: 960px; margin: 0 auto; padding: 24px; }
-.card { background: var(--card); border: 1px solid #1c2430; border-radius: 12px; padding: 16px; }
-.grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-.section { margin-top: 16px; }
-.trace { font-size: 0.9rem; color: var(--muted); }
+body { background: var(--bg); color: var(--text); margin: 0; font-family: system-ui, -apple-system, sans-serif; }
+
+input, textarea, select {
+  background: var(--bg);
+  color: var(--text);
+  border: 1px solid var(--border-active);
+  padding: 10px 12px;
+  border-radius: 8px;
+  width: 100%;
+  box-sizing: border-box;
+  font-size: 0.95rem;
+  transition: border-color 0.15s;
+}
+input:focus, textarea:focus, select:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.container { max-width: 1040px; margin: 0 auto; padding: 28px 20px; }
+.card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 20px; }
+.section { margin-top: 20px; }
+.grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.trace { font-size: 0.85rem; color: var(--muted); }
+.error-text { color: var(--danger); font-size: 0.9rem; }
+
+/* Field */
+.field { display: flex; flex-direction: column; gap: 6px; }
+.field-label { font-size: 0.85rem; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
+.field-hint { font-weight: 400; text-transform: none; letter-spacing: 0; font-size: 0.8rem; }
+
+/* Buttons */
+button { cursor: pointer; border: none; border-radius: 8px; font-size: 0.9rem; transition: background 0.15s, opacity 0.15s; }
+button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.btn-primary {
+  background: var(--accent);
+  color: white;
+  padding: 11px 22px;
+  font-weight: 600;
+  font-size: 1rem;
+}
+.btn-primary:hover:not(:disabled) { background: var(--accent-hover); }
+
+.btn-secondary {
+  background: #1c2430;
+  color: var(--text);
+  padding: 8px 14px;
+  border: 1px solid var(--border-active);
+}
+.btn-secondary:hover:not(:disabled) { background: #222d3c; }
+
+/* ── Agent Cockpit ──────────────────────────────────────────────────────────── */
+
+.cockpit-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 12px;
+}
+
+.cockpit-card {
+  border-radius: 10px;
+  padding: 14px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  transition: border-color 0.2s, background 0.2s;
+}
+
+.cockpit-card--idle   { opacity: 0.5; }
+.cockpit-card--started {
+  border-color: var(--accent);
+  background: #110e1f;
+}
+.cockpit-card--retrying {
+  border-color: var(--warning);
+  background: #1a1600;
+}
+.cockpit-card--completed {
+  border-color: var(--success);
+  background: #0a1a10;
+}
+.cockpit-card--failed {
+  border-color: var(--danger);
+  background: #1a0a0a;
+}
+
+.cockpit-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+  flex-wrap: wrap;
+}
+
+.cockpit-emoji { font-size: 1.2rem; line-height: 1; }
+.cockpit-label { font-size: 0.85rem; font-weight: 600; flex: 1; min-width: 0; }
+
+.cockpit-badge {
+  font-size: 0.72rem;
+  padding: 2px 7px;
+  border-radius: 99px;
+  white-space: nowrap;
+  font-weight: 600;
+}
+.cockpit-badge--started   { background: #2a1f6a; color: #c9b8ff; }
+.cockpit-badge--retrying  { background: #2a2000; color: var(--warning); }
+.cockpit-badge--completed { background: #0d2a18; color: var(--success); }
+.cockpit-badge--failed    { background: #2a0d0d; color: var(--danger); }
+
+.cockpit-desc    { font-size: 0.78rem; color: var(--muted); line-height: 1.4; }
+.cockpit-elapsed { font-size: 0.75rem; color: var(--muted); margin-top: 6px; font-variant-numeric: tabular-nums; }
+
+/* Animated progress bar for running agents */
+.cockpit-progress-bar {
+  height: 3px;
+  background: #1e1a2e;
+  border-radius: 2px;
+  margin-top: 10px;
+  overflow: hidden;
+}
+.cockpit-progress-fill {
+  height: 100%;
+  width: 40%;
+  background: var(--accent);
+  border-radius: 2px;
+  animation: progress-sweep 1.6s ease-in-out infinite;
+}
+
+@keyframes progress-sweep {
+  0%   { transform: translateX(-100%); }
+  100% { transform: translateX(300%); }
+}
+
+/* ── Results grid ──────────────────────────────────────────────────────────── */
+
+.results-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.result-card { }
+.result-card--wide { grid-column: 1 / -1; }
+
+.result-heading {
+  margin: 0 0 16px;
+  font-size: 1.1rem;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--border);
+}
+
+/* Slide cards inside pitch deck */
+.slide-card {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px 14px;
+}
+.slide-number {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--accent);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 4px;
+}
+.slide-title {
+  font-weight: 600;
+  margin-bottom: 8px;
+  font-size: 0.9rem;
+}
+.slide-bullets {
+  margin: 0;
+  padding-left: 16px;
+  font-size: 0.82rem;
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+/* ── Run history items ─────────────────────────────────────────────────────── */
+
+.history-item {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px 14px;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+.history-item:hover {
+  border-color: var(--border-active);
+  background: #0f141a;
+}
+
+/* ── Responsive ─────────────────────────────────────────────────────────────── */
+
+@media (max-width: 640px) {
+  .grid { grid-template-columns: 1fr; }
+  .grid > [style*="grid-column"] { grid-column: unset !important; }
+  .results-grid { grid-template-columns: 1fr; }
+  .result-card--wide { grid-column: unset; }
+  .cockpit-grid { grid-template-columns: 1fr 1fr; }
+}

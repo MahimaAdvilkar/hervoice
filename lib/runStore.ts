@@ -1,6 +1,6 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { RunRecordSchema, type FinalResponse, type Intake, type RunRecord } from "@/lib/schemas";
+import { RunRecordSchema, type EvaluationResult, type FinalResponse, type Intake, type RunRecord } from "@/lib/schemas";
 
 const STORE_DIR = path.join(process.cwd(), ".data");
 const STORE_FILE = path.join(STORE_DIR, "runs.json");
@@ -53,4 +53,13 @@ export async function listRuns(): Promise<RunRecord[]> {
 export async function getRunById(id: string): Promise<RunRecord | null> {
   const runs = await readRuns();
   return runs.find((r) => r.id === id) ?? null;
+}
+
+export async function saveRunEvaluation(id: string, evaluation: EvaluationResult): Promise<RunRecord | null> {
+  const runs = await readRuns();
+  const idx = runs.findIndex((r) => r.id === id);
+  if (idx === -1) return null;
+  runs[idx] = { ...runs[idx], evaluation };
+  await writeRuns(runs);
+  return runs[idx];
 }
