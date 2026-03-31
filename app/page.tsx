@@ -1,6 +1,6 @@
 "use client";
 import React from "react";
-import { IntakeSchema, FinalResponseSchema, type FinalResponse, type Intake, type EvaluationResult } from "@/lib/schemas";
+import { IntakeSchema, FinalResponseSchema, type FinalResponse, type Intake, type EvaluationResult, type CompetitorAnalysis, type InvestorMatch } from "@/lib/schemas";
 import "./globals.css";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -96,6 +96,14 @@ export default function Page() {
   const [showCockpit, setShowCockpit] = React.useState(false);
   const [evaluation, setEvaluation] = React.useState<EvaluationResult | null>(null);
   const [evalLoading, setEvalLoading] = React.useState(false);
+  const [refineSection, setRefineSection] = React.useState<string | null>(null);
+  const [refineFeedback, setRefineFeedback] = React.useState("");
+  const [refineLoading, setRefineLoading] = React.useState(false);
+  const [refineError, setRefineError] = React.useState<string | null>(null);
+  const [investors, setInvestors] = React.useState<InvestorMatch[] | null>(null);
+  const [investorsLoading, setInvestorsLoading] = React.useState(false);
+  const [competitors, setCompetitors] = React.useState<CompetitorAnalysis | null>(null);
+  const [competitorsLoading, setCompetitorsLoading] = React.useState(false);
   const downloadRef = React.useRef<HTMLAnchorElement | null>(null);
   const cockpitRef = React.useRef<HTMLDivElement | null>(null);
 
@@ -371,6 +379,74 @@ export default function Page() {
     }
   };
 
+  const applyRefinement = async (section: string) => {
+    if (!data || !lastIntake || !refineFeedback.trim()) return;
+    setRefineLoading(true);
+    setRefineError(null);
+    const currentMap: Record<string, object> = {
+      blueprint: data.blueprint,
+      funding:   data.funding,
+      gtm:       data.gtm,
+      roadmap:   data.roadmap,
+      pitch:     data.pitch_deck,
+    };
+    try {
+      const res = await fetch("/api/refine", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ intake: lastIntake, section, feedback: refineFeedback, current: currentMap[section] }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json?.error || "Refinement failed");
+      const sectionKey: Record<string, string> = { blueprint: "blueprint", funding: "funding", gtm: "gtm", roadmap: "roadmap", pitch: "pitch_deck" };
+      setData((prev) => prev ? { ...prev, [sectionKey[section]]: json.data } : prev);
+      setRefineSection(null);
+      setRefineFeedback("");
+    } catch (e: any) {
+      setRefineError(e?.message ?? "Refinement failed");
+    } finally {
+      setRefineLoading(false);
+    }
+  };
+
+  const loadInvestors = async () => {
+    if (!lastIntake) return;
+    setInvestorsLoading(true);
+    try {
+      const res = await fetch("/api/investors", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ region: lastIntake.region, stage: lastIntake.stage, industry: lastIntake.industry }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json?.error || "Failed");
+      setInvestors(Array.isArray(json.matches) ? json.matches : []);
+    } catch (e: any) {
+      setError(e?.message ?? "Investor matching failed");
+    } finally {
+      setInvestorsLoading(false);
+    }
+  };
+
+  const loadCompetitors = async () => {
+    if (!lastIntake) return;
+    setCompetitorsLoading(true);
+    try {
+      const res = await fetch("/api/competitors", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ intake: lastIntake }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json?.error || "Failed");
+      setCompetitors(json.analysis);
+    } catch (e: any) {
+      setError(e?.message ?? "Competitor analysis failed");
+    } finally {
+      setCompetitorsLoading(false);
+    }
+  };
+
   const completedCount = AGENT_KEYS.filter((k) => agentStates[k].status === "completed").length;
 
   return (
@@ -479,7 +555,8 @@ export default function Page() {
         <div className="section results-grid">
           {/* Blueprint */}
           <div className="card result-card">
-            <h2 className="result-heading">🔭 Founder Blueprint</h2>
+            <SectionHeader title="🔭 Founder Blueprint" section="blueprint" refineSection={refineSection} setRefineSection={setRefineSection} />
+            <RefineDrawer section="blueprint" refineSection={refineSection} refineFeedback={refineFeedback} setRefineFeedback={setRefineFeedback} refineLoading={refineLoading} refineError={refineError} onApply={applyRefinement} onCancel={() => { setRefineSection(null); setRefineFeedback(""); setRefineError(null); }} />
             <ResultItem label="Problem" value={data.blueprint.problem_statement} />
             <ResultItem label="Target Customer" value={data.blueprint.target_customer} />
             <ResultItem label="Value Proposition" value={data.blueprint.value_proposition} />
@@ -491,7 +568,8 @@ export default function Page() {
 
           {/* Funding */}
           <div className="card result-card">
-            <h2 className="result-heading">💰 Funding Strategy</h2>
+            <SectionHeader title="💰 Funding Strategy" section="funding" refineSection={refineSection} setRefineSection={setRefineSection} />
+            <RefineDrawer section="funding" refineSection={refineSection} refineFeedback={refineFeedback} setRefineFeedback={setRefineFeedback} refineLoading={refineLoading} refineError={refineError} onApply={applyRefinement} onCancel={() => { setRefineSection(null); setRefineFeedback(""); setRefineError(null); }} />
             <ResultItem label="Recommended Path" value={data.funding.recommended_funding_path} />
             <ResultList label="Top 3 Next Steps" items={data.funding.top_3_next_steps} highlight />
             {data.funding.grants_and_programs.length > 0 && <ResultList label="Grants & Programs" items={data.funding.grants_and_programs} />}
@@ -503,7 +581,8 @@ export default function Page() {
 
           {/* GTM */}
           <div className="card result-card">
-            <h2 className="result-heading">🚀 Go-To-Market</h2>
+            <SectionHeader title="🚀 Go-To-Market" section="gtm" refineSection={refineSection} setRefineSection={setRefineSection} />
+            <RefineDrawer section="gtm" refineSection={refineSection} refineFeedback={refineFeedback} setRefineFeedback={setRefineFeedback} refineLoading={refineLoading} refineError={refineError} onApply={applyRefinement} onCancel={() => { setRefineSection(null); setRefineFeedback(""); setRefineError(null); }} />
             <ResultItem label="Positioning" value={data.gtm.positioning_statement} />
             <ResultList label="Ideal Early Adopters" items={data.gtm.ideal_early_adopters} />
             <ResultList label="Validation Experiments" items={data.gtm.validation_experiments} highlight />
@@ -515,7 +594,8 @@ export default function Page() {
 
           {/* Roadmap */}
           <div className="card result-card">
-            <h2 className="result-heading">🗺️ 90-Day Roadmap</h2>
+            <SectionHeader title="🗺️ 90-Day Roadmap" section="roadmap" refineSection={refineSection} setRefineSection={setRefineSection} />
+            <RefineDrawer section="roadmap" refineSection={refineSection} refineFeedback={refineFeedback} setRefineFeedback={setRefineFeedback} refineLoading={refineLoading} refineError={refineError} onApply={applyRefinement} onCancel={() => { setRefineSection(null); setRefineFeedback(""); setRefineError(null); }} />
             <ResultList label="Day 0–30" items={data.roadmap.day_30} highlight />
             <ResultList label="Day 31–60" items={data.roadmap.day_60} />
             <ResultList label="Day 61–90" items={data.roadmap.day_90} />
@@ -525,7 +605,8 @@ export default function Page() {
 
           {/* Pitch Deck */}
           <div className="card result-card result-card--wide">
-            <h2 className="result-heading">🎤 Pitch Deck</h2>
+            <SectionHeader title="🎤 Pitch Deck" section="pitch" refineSection={refineSection} setRefineSection={setRefineSection} />
+            <RefineDrawer section="pitch" refineSection={refineSection} refineFeedback={refineFeedback} setRefineFeedback={setRefineFeedback} refineLoading={refineLoading} refineError={refineError} onApply={applyRefinement} onCancel={() => { setRefineSection(null); setRefineFeedback(""); setRefineError(null); }} />
             <ResultItem label="Vision" value={data.pitch_deck.one_sentence_vision} />
             <ResultItem label="Elevator Pitch" value={data.pitch_deck.elevator_pitch} />
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 12, marginTop: 12 }}>
@@ -571,6 +652,36 @@ export default function Page() {
                 );
               })}
             </div>
+          </div>
+
+          {/* Investor Matching */}
+          <div className="card result-card result-card--wide">
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
+              <h2 className="result-heading" style={{ margin: 0, borderBottom: "none", paddingBottom: 0 }}>🎯 Matched Investors & Funding</h2>
+              <button onClick={loadInvestors} disabled={investorsLoading} className="btn-secondary">
+                {investorsLoading ? "Matching…" : investors ? "Refresh Matches" : "Find Investors"}
+              </button>
+            </div>
+            {!investors && !investorsLoading && (
+              <p className="trace" style={{ marginTop: 8 }}>Curated matches from 35+ real VCs, accelerators, grants, and government programs — filtered for your region, stage, and industry.</p>
+            )}
+            {investorsLoading && <div style={{ marginTop: 12 }}><div className="cockpit-progress-bar"><div className="cockpit-progress-fill" /></div></div>}
+            {investors && <InvestorGrid investors={investors} />}
+          </div>
+
+          {/* Competitor Intelligence */}
+          <div className="card result-card result-card--wide">
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
+              <h2 className="result-heading" style={{ margin: 0, borderBottom: "none", paddingBottom: 0 }}>🔍 Competitive Intelligence</h2>
+              <button onClick={loadCompetitors} disabled={competitorsLoading} className="btn-secondary">
+                {competitorsLoading ? "Analyzing…" : competitors ? "Re-analyze" : "Run Competitor Analysis"}
+              </button>
+            </div>
+            {!competitors && !competitorsLoading && (
+              <p className="trace" style={{ marginTop: 8 }}>AI-powered competitive landscape — direct competitors, indirect alternatives, your edge, and the market gap you can own.</p>
+            )}
+            {competitorsLoading && <div style={{ marginTop: 12 }}><div className="cockpit-progress-bar"><div className="cockpit-progress-fill" /></div></div>}
+            {competitors && <CompetitorBoard analysis={competitors} />}
           </div>
 
           {/* Evaluation */}
@@ -655,6 +766,182 @@ function ResultList({ label, items, highlight }: { label: string; items: string[
           <li key={i} style={{ marginBottom: 3, color: highlight ? "var(--text)" : "var(--muted)", fontWeight: highlight ? 500 : 400 }}>{item}</li>
         ))}
       </ul>
+    </div>
+  );
+}
+
+// ── SectionHeader ─────────────────────────────────────────────────────────────
+
+function SectionHeader({ title, section, refineSection, setRefineSection }: {
+  title: string;
+  section: string;
+  refineSection: string | null;
+  setRefineSection: (s: string | null) => void;
+}) {
+  const isOpen = refineSection === section;
+  return (
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 0 }}>
+      <h2 className="result-heading" style={{ margin: 0, flex: 1 }}>{title}</h2>
+      <button
+        className="btn-secondary"
+        style={{ fontSize: "0.78rem", padding: "4px 10px", marginLeft: 10, marginBottom: 12 }}
+        onClick={() => setRefineSection(isOpen ? null : section)}
+      >
+        {isOpen ? "Cancel" : "✏️ Refine"}
+      </button>
+    </div>
+  );
+}
+
+// ── RefineDrawer ──────────────────────────────────────────────────────────────
+
+function RefineDrawer({ section, refineSection, refineFeedback, setRefineFeedback, refineLoading, refineError, onApply, onCancel }: {
+  section: string;
+  refineSection: string | null;
+  refineFeedback: string;
+  setRefineFeedback: (v: string) => void;
+  refineLoading: boolean;
+  refineError: string | null;
+  onApply: (section: string) => void;
+  onCancel: () => void;
+}) {
+  if (refineSection !== section) return null;
+  return (
+    <div className="refine-drawer">
+      <p className="trace" style={{ marginBottom: 6 }}>Tell the agent what to change — be specific. e.g. "Focus more on bootstrapping, less on VC" or "Make the roadmap more aggressive".</p>
+      <textarea
+        value={refineFeedback}
+        onChange={(e) => setRefineFeedback(e.target.value)}
+        placeholder="Your feedback for this section…"
+        rows={2}
+        style={{ marginBottom: 8 }}
+        disabled={refineLoading}
+      />
+      <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+        <button className="btn-primary" style={{ fontSize: "0.88rem", padding: "8px 16px" }} onClick={() => onApply(section)} disabled={refineLoading || !refineFeedback.trim()}>
+          {refineLoading ? "Regenerating…" : "Apply Feedback"}
+        </button>
+        <button className="btn-secondary" style={{ fontSize: "0.82rem" }} onClick={onCancel} disabled={refineLoading}>Cancel</button>
+        {refineError && <span className="error-text">{refineError}</span>}
+      </div>
+    </div>
+  );
+}
+
+// ── InvestorGrid ──────────────────────────────────────────────────────────────
+
+const TYPE_LABELS: Record<string, string> = {
+  vc: "VC", accelerator: "Accelerator", grant: "Grant", angel_network: "Angel Network", government: "Gov Grant",
+};
+const TYPE_COLORS: Record<string, { bg: string; color: string }> = {
+  vc:            { bg: "#1a0e3a", color: "#c9b8ff" },
+  accelerator:   { bg: "#0d2218", color: "var(--success)" },
+  grant:         { bg: "#1a1400", color: "var(--warning)" },
+  angel_network: { bg: "#0d1e2a", color: "#60c8ff" },
+  government:    { bg: "#1a1a1a", color: "var(--muted)" },
+};
+
+function InvestorGrid({ investors }: { investors: InvestorMatch[] }) {
+  if (!investors.length) return <p className="trace" style={{ marginTop: 8 }}>No matches found for this region/stage/industry combination.</p>;
+  return (
+    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: 12, marginTop: 14 }}>
+      {investors.map((inv, i) => {
+        const colors = TYPE_COLORS[inv.type] ?? TYPE_COLORS.government;
+        return (
+          <div key={i} className="investor-card">
+            <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8, marginBottom: 6 }}>
+              <strong style={{ fontSize: "0.95rem", lineHeight: 1.3 }}>{inv.name}</strong>
+              <span style={{ fontSize: "0.7rem", padding: "2px 7px", borderRadius: 99, fontWeight: 600, background: colors.bg, color: colors.color, whiteSpace: "nowrap" }}>
+                {TYPE_LABELS[inv.type] ?? inv.type}
+              </span>
+            </div>
+            <p style={{ margin: "0 0 6px", fontSize: "0.82rem", color: "var(--muted)", lineHeight: 1.45 }}>{inv.focus}</p>
+            <div style={{ display: "flex", gap: 16, marginBottom: 6, flexWrap: "wrap" }}>
+              <span style={{ fontSize: "0.78rem", color: "var(--success)", fontWeight: 600 }}>{inv.check_range}</span>
+            </div>
+            <div style={{ fontSize: "0.76rem", color: "var(--accent)", marginBottom: 4 }}>✓ {inv.why_matched}</div>
+            <p style={{ margin: 0, fontSize: "0.76rem", color: "var(--muted)" }}>{inv.apply_info}</p>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// ── CompetitorBoard ───────────────────────────────────────────────────────────
+
+function CompetitorBoard({ analysis }: { analysis: CompetitorAnalysis }) {
+  return (
+    <div style={{ marginTop: 14 }}>
+      {/* Direct competitors */}
+      {analysis.direct_competitors.length > 0 && (
+        <div style={{ marginBottom: 20 }}>
+          <div style={{ fontSize: "0.78rem", color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 8 }}>Direct Competitors</div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 10 }}>
+            {analysis.direct_competitors.map((c, i) => (
+              <div key={i} className="competitor-card competitor-card--direct">
+                <strong style={{ fontSize: "0.95rem" }}>{c.name}</strong>
+                <p style={{ margin: "4px 0 6px", fontSize: "0.82rem", color: "var(--muted)" }}>{c.description}</p>
+                <div style={{ fontSize: "0.76rem", marginBottom: 3 }}>
+                  <span style={{ color: "var(--success)" }}>Your edge: </span>
+                  <span style={{ color: "var(--text)" }}>{c.your_edge_over_them}</span>
+                </div>
+                <div style={{ fontSize: "0.76rem" }}>
+                  <span style={{ color: "var(--danger)" }}>Their edge: </span>
+                  <span style={{ color: "var(--muted)" }}>{c.their_edge_over_you}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Indirect competitors */}
+      {analysis.indirect_competitors.length > 0 && (
+        <div style={{ marginBottom: 20 }}>
+          <div style={{ fontSize: "0.78rem", color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 8 }}>Indirect / Alternative Solutions</div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 10 }}>
+            {analysis.indirect_competitors.map((c, i) => (
+              <div key={i} className="competitor-card competitor-card--indirect">
+                <strong style={{ fontSize: "0.95rem" }}>{c.name}</strong>
+                <p style={{ margin: "4px 0 6px", fontSize: "0.82rem", color: "var(--muted)" }}>{c.description}</p>
+                <div style={{ fontSize: "0.76rem", marginBottom: 3 }}>
+                  <span style={{ color: "var(--success)" }}>Your edge: </span>
+                  <span style={{ color: "var(--text)" }}>{c.your_edge_over_them}</span>
+                </div>
+                <div style={{ fontSize: "0.76rem" }}>
+                  <span style={{ color: "var(--danger)" }}>Their edge: </span>
+                  <span style={{ color: "var(--muted)" }}>{c.their_edge_over_you}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Moat + Whitespace */}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 16 }}>
+        <div style={{ background: "#0a1a10", border: "1px solid var(--success)", borderRadius: 8, padding: "12px 14px" }}>
+          <div style={{ fontSize: "0.75rem", color: "var(--success)", fontWeight: 700, marginBottom: 4, textTransform: "uppercase", letterSpacing: "0.06em" }}>Your Competitive Moat</div>
+          <p style={{ margin: 0, fontSize: "0.88rem", color: "var(--text)" }}>{analysis.competitive_moat}</p>
+        </div>
+        <div style={{ background: "#0d1a2a", border: "1px solid var(--accent)", borderRadius: 8, padding: "12px 14px" }}>
+          <div style={{ fontSize: "0.75rem", color: "var(--accent)", fontWeight: 700, marginBottom: 4, textTransform: "uppercase", letterSpacing: "0.06em" }}>Whitespace Opportunity</div>
+          <p style={{ margin: 0, fontSize: "0.88rem", color: "var(--text)" }}>{analysis.whitespace_opportunity}</p>
+        </div>
+      </div>
+
+      {/* Watch out for */}
+      {analysis.watch_out_for.length > 0 && (
+        <div>
+          <div style={{ fontSize: "0.78rem", color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 6 }}>Watch Out For</div>
+          <ul style={{ margin: 0, paddingLeft: 18 }}>
+            {analysis.watch_out_for.map((w, i) => (
+              <li key={i} style={{ fontSize: "0.85rem", color: "var(--danger)", marginBottom: 3 }}>{w}</li>
+            ))}
+          </ul>
+        </div>
+      )}
     </div>
   );
 }

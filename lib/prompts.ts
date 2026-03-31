@@ -63,6 +63,85 @@ export function pitchPrompt(intake: Intake) {
   };
 }
 
+export function refinePrompt(
+  section: "blueprint" | "funding" | "gtm" | "roadmap" | "pitch",
+  intake: Intake,
+  currentOutput: object,
+  feedback: string,
+) {
+  const schemaMap: Record<string, string> = {
+    blueprint: `{"problem_statement":"string","target_customer":"string","value_proposition":"string","unique_angle":"string","core_features":["string"],"risks":["string"],"assumptions":["string"]}`,
+    funding: `{"recommended_funding_path":"string","top_3_next_steps":["string"],"grants_and_programs":["string"],"accelerator_types":["string"],"bootstrap_strategy":"string","pitch_focus":["string"],"risks_and_mitigations":["string"]}`,
+    gtm: `{"positioning_statement":"string","ideal_early_adopters":["string"],"validation_experiments":["string"],"first_10_customers_plan":["string"],"channels":["string"],"partnership_ideas":["string"],"success_metrics":["string"]}`,
+    roadmap: `{"day_30":["string"],"day_60":["string"],"day_90":["string"],"milestones":["string"],"metrics_to_track":["string"]}`,
+    pitch: `{"one_sentence_vision":"string","elevator_pitch":"string","slides":[{"title":"string","bullets":["string"]}],"demo_script_30s":["string"]}`,
+  };
+  return {
+    system: SYSTEM_JSON_ONLY,
+    user: `You are regenerating the ${section} section of a startup plan based on founder feedback.
+
+FOUNDER CONTEXT:
+${JSON.stringify(intake, null, 2)}
+
+CURRENT OUTPUT (the version to improve):
+${JSON.stringify(currentOutput, null, 2)}
+
+FOUNDER FEEDBACK:
+"${feedback}"
+
+Regenerate the ${section} section incorporating the feedback above. Keep what was good; improve or replace what the founder flagged.
+Return ONLY valid JSON matching EXACTLY this schema:
+${schemaMap[section]}`,
+  };
+}
+
+export function competitorPrompt(intake: Intake) {
+  const schema = `{
+  "direct_competitors": [
+    {
+      "name": "string",
+      "description": "string",
+      "target_market": "string",
+      "your_edge_over_them": "string",
+      "their_edge_over_you": "string"
+    }
+  ],
+  "indirect_competitors": [
+    {
+      "name": "string",
+      "description": "string",
+      "target_market": "string",
+      "your_edge_over_them": "string",
+      "their_edge_over_you": "string"
+    }
+  ],
+  "whitespace_opportunity": "string",
+  "competitive_moat": "string",
+  "watch_out_for": ["string"]
+}`;
+  return {
+    system: `You are a competitive intelligence analyst. Return ONLY valid JSON — no markdown, no commentary.`,
+    user: `Analyze the competitive landscape for this startup idea and return a structured analysis.
+
+STARTUP IDEA: ${intake.idea}
+INDUSTRY: ${intake.industry}
+STAGE: ${intake.stage}
+REGION: ${intake.region}
+TARGET CUSTOMER: ${intake.targetCustomer}
+
+Instructions:
+- direct_competitors: 3–4 real companies that solve the same problem for the same customer
+- indirect_competitors: 2–3 companies that solve it differently or partially
+- For each competitor, be specific about their actual edge vs this founder's edge
+- whitespace_opportunity: the specific market gap this founder can own
+- competitive_moat: 1–2 durable advantages this founder can build
+- watch_out_for: 3–4 concrete competitive risks (e.g., big players pivoting, pricing pressure)
+
+Return ONLY valid JSON matching EXACTLY:
+${schema}`,
+  };
+}
+
 export function fixJsonPrompt(badText: string, schemaHint?: string) {
   const header = `The previous output was NOT valid JSON or didn't match the required schema.`;
   const schemaLine = schemaHint ? `\n\nReturn ONLY corrected valid JSON that matches EXACTLY this schema:\n${schemaHint}` : `\n\nReturn ONLY corrected valid JSON that matches the expected schema.`;

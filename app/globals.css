@@ -192,6 +192,44 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
   line-height: 1.6;
 }
 
+/* ── Refine drawer ──────────────────────────────────────────────────────────── */
+
+.refine-drawer {
+  background: #0d1520;
+  border: 1px solid var(--border-active);
+  border-radius: 8px;
+  padding: 12px 14px;
+  margin-bottom: 14px;
+}
+
+/* ── Investor cards ─────────────────────────────────────────────────────────── */
+
+.investor-card {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px;
+  transition: border-color 0.15s;
+}
+.investor-card:hover {
+  border-color: var(--border-active);
+}
+
+/* ── Competitor cards ───────────────────────────────────────────────────────── */
+
+.competitor-card {
+  border-radius: 10px;
+  padding: 12px 14px;
+}
+.competitor-card--direct {
+  background: var(--bg);
+  border: 1px solid var(--border);
+}
+.competitor-card--indirect {
+  background: #0b1018;
+  border: 1px solid var(--border);
+}
+
 /* ── Run history items ─────────────────────────────────────────────────────── */
 
 .history-item {

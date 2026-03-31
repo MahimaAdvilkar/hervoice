@@ -108,6 +108,39 @@ export const RunRecordSchema = z.object({
 });
 export type RunRecord = z.infer<typeof RunRecordSchema>;
 
+// ── Competitor intel ─────────────────────────────────────────────────────────
+
+export const CompetitorSchema = z.object({
+  name: z.string(),
+  description: z.string(),
+  target_market: z.string(),
+  your_edge_over_them: z.string(),
+  their_edge_over_you: z.string(),
+});
+export type Competitor = z.infer<typeof CompetitorSchema>;
+
+export const CompetitorAnalysisSchema = z.object({
+  direct_competitors: z.array(CompetitorSchema).max(4),
+  indirect_competitors: z.array(CompetitorSchema).max(3),
+  whitespace_opportunity: z.string(),
+  competitive_moat: z.string(),
+  watch_out_for: z.array(z.string()).max(4),
+});
+export type CompetitorAnalysis = z.infer<typeof CompetitorAnalysisSchema>;
+
+// ── Investor match ────────────────────────────────────────────────────────────
+
+export const InvestorMatchSchema = z.object({
+  name: z.string(),
+  type: z.enum(["vc", "accelerator", "grant", "angel_network", "government"]),
+  focus: z.string(),
+  check_range: z.string(),
+  regions: z.array(z.string()),
+  why_matched: z.string(),
+  apply_info: z.string(),
+});
+export type InvestorMatch = z.infer<typeof InvestorMatchSchema>;
+
 export const EvaluationResultSchema = z.object({
   overall_score: z.number().min(0).max(100),
   actionability_score: z.number().min(0).max(100),
